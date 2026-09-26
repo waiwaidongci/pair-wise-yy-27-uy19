@@ -26,7 +26,9 @@ class Handler(BaseHTTPRequestHandler):
             if len(parts)==5 and parts[:2]==["api","passages"] and parts[3]=="snapshots":
                 uid=int(parse_qs(p.query).get("user_id",[0])[0]); return self._json(200,self.db.get_snapshot(int(parts[2]),int(parts[4]),uid))
             if len(parts)==4 and parts[:2]==["api","works"] and parts[3]=="collation":
-                uid=int(parse_qs(p.query).get("user_id",[0])[0]); return self._json(200,self.db.export_collation(int(parts[2]),uid))
+                q=parse_qs(p.query); uid=int(q.get("user_id",[0])[0]); return self._json(200,self.db.export_collation(int(parts[2]),uid))
+            if p.path=="/api/emendations":
+                q=parse_qs(p.query); return self._json(200,self.db.list_emendations(int(q["passage_id"][0]),int(q["witness_id"][0]),int(q.get("user_id",[0])[0])))
             self._json(404,{"ok":False,"error":"接口不存在"})
         except (DomainError,ValueError) as exc: self._json(400,{"ok":False,"error":str(exc)})
     def do_POST(self):
@@ -43,6 +45,11 @@ class Handler(BaseHTTPRequestHandler):
             if path=="/api/variants": return self._json(201,{"ok":True,"id":self.db.create_variant(int(b.get("passage_id",0)),int(b.get("witness_id",0)),str(b.get("proposed_text","")),str(b.get("reason","")),int(b.get("user_id",0)),int(b.get("expected_revision",0)))})
             if len(parts)==4 and parts[:2]==["api","variants"] and parts[3]=="revisions": return self._json(200,{"ok":True,"revision":self.db.update_variant(int(parts[2]),str(b.get("proposed_text","")),str(b.get("reason","")),int(b.get("user_id",0)),int(b.get("expected_revision",0)))})
             if path=="/api/notes": return self._json(201,{"ok":True,"id":self.db.add_note(int(b.get("variant_id",0)),str(b.get("body","")),int(b.get("user_id",0)))})
+            if path=="/api/emendations": return self._json(201,{"ok":True,"id":self.db.submit_emendation(int(b.get("passage_id",0)),int(b.get("witness_id",0)),int(b.get("position",0)),str(b.get("proposed_char","")),str(b.get("basis","")),int(b.get("user_id",0)),int(b.get("expected_revision",0)))})
+            if len(parts)==3 and parts[0]=="api" and parts[1]=="emendations" and parts[2] in ("approve","reject"):
+                self.db.review_emendation(int(b.get("emendation_id",0)),parts[2],int(b.get("reviewer_id",0)),str(b.get("reason","")),int(b.get("expected_revision",0)) if b.get("expected_revision") is not None else None); return self._json(200,{"ok":True})
+            if len(parts)==4 and parts[0]=="api" and parts[1]=="emendations" and parts[3]=="resubmit":
+                return self._json(200,{"ok":True,"id":self.db.resubmit_emendation(int(parts[2]),int(b.get("user_id",0)),int(b.get("expected_revision",0)))})
             if len(parts)==4 and parts[:2]==["api","passages"] and parts[3]=="lock": self.db.lock_passage(int(parts[2]),int(b.get("user_id",0)),str(b.get("reason",""))); return self._json(200,{"ok":True})
             self._json(404,{"ok":False,"error":"接口不存在"})
         except (DomainError,ValueError) as exc: self._json(400,{"ok":False,"error":str(exc)})
