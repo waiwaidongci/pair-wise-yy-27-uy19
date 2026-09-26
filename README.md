@@ -1,6 +1,6 @@
 # 数字人文文本校勘
 
-这是一个 Python 标准库实现的校勘工作台，使用 SQLite 保存作品、版本、残片、转录、段落、异文、注释、修订层和快照，并通过 `http.server` 暴露 JSON API。
+这是一个 Python 标准库实现的校勘工作台，使用 SQLite 保存作品、版本、残片、转录、段落、异文、字位校记、注释、修订层和快照，并通过 `http.server` 暴露 JSON API。
 
 ## 启动与测试
 
@@ -19,6 +19,11 @@ python -m unittest discover -s tests -v
 - `[缺页]`、`[不可辨]`、`[残损]` 等标记会参与校勘稿导出和缺口统计，不匹配的方括号会拒绝保存。
 - 每次新增或修改异文都会产生递增修订号和 JSON 快照；提交必须携带 `expected_revision`，旧页面不能覆盖新层。
 - 锁定段落由负责人执行，锁定后任何新修订都会被拒绝。
+- 字位校记按对齐文本序号登记原字、拟字和依据；同一字位同时只能存在一张待审校记。
+- 登记时原字与当前对齐文本不符（字位变化），或把 `[缺页]`、`[残损]` 等标记当作确定文字，都会被直接拒绝。
+- 校记只能由具备 review 权限且非作者本人的审阅人处理；通过后拟字写入当前释文，驳回必须写明原因并退回。
+- 异文提交新层后，该异文上的待审与已通过校记一并失效，需重新登记并审阅。
+- 导出校勘稿为每条对齐给出释文、已生效字位和未决字位。
 
 ## 主要接口
 
@@ -27,6 +32,8 @@ python -m unittest discover -s tests -v
 - `POST /api/works/{id}/passages`、`POST /api/works/{id}/access`
 - `POST /api/alignments`
 - `POST /api/variants`、`POST /api/variants/{id}/revisions`
+- `POST /api/char-notes`、`POST /api/char-notes/{id}/review`
+- `GET /api/passages/{id}/char-notes?user_id=...`
 - `GET /api/passages/{id}/snapshots/{revision}?user_id=...`
 - `POST /api/passages/{id}/lock`
 - `GET /api/works/{id}/collation?user_id=...`
